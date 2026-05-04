@@ -1,4 +1,5 @@
 import { useSessionStore } from './stores/sessionStore'
+import { UploadPanel } from './components/UploadPanel'
 
 export default function App() {
   const { selectedAngles, spaceImageBase64, objectImageBase64 } = useSessionStore()
@@ -35,18 +36,7 @@ export default function App() {
               Upload &amp; Configure
             </h2>
 
-            {/* Upload Photos placeholder */}
-            <section>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Upload Photos</h3>
-              <div className="space-y-3">
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-400 bg-gray-50">
-                  Space photo
-                </div>
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-400 bg-gray-50">
-                  Object photo
-                </div>
-              </div>
-            </section>
+            <UploadPanel />
 
             {/* Configure placeholder */}
             <section>
