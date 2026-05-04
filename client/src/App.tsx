@@ -1,5 +1,6 @@
 import { useSessionStore } from './stores/sessionStore'
 import { UploadPanel } from './components/UploadPanel'
+import { ConfigForm } from './components/ConfigForm'
 
 export default function App() {
   const { selectedAngles, spaceImageBase64, objectImageBase64 } = useSessionStore()
@@ -38,13 +39,7 @@ export default function App() {
 
             <UploadPanel />
 
-            {/* Configure placeholder */}
-            <section>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Configure</h3>
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-400">
-                Parameter controls will appear here.
-              </div>
-            </section>
+            <ConfigForm />
 
             {/* Select Angles placeholder */}
             <section>
