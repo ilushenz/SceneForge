@@ -81,6 +81,18 @@ function ImageCard({
     )
   }
 
+  if (result.status === 'retrying') {
+    return (
+      <div className="aspect-square rounded-xl bg-amber-950/30 border border-amber-800/50 flex flex-col items-center justify-center gap-3 p-4">
+        <div className="w-8 h-8 border-4 border-amber-900 border-t-amber-500 rounded-full animate-spin" />
+        <div className="text-center">
+          <p className="text-xs font-semibold text-gray-300">{result.angle}</p>
+          <p className="text-[10px] text-amber-400 mt-0.5 leading-tight">{result.errorMessage}</p>
+        </div>
+      </div>
+    )
+  }
+
   if (result.status === 'error') {
     return (
       <div className="aspect-square rounded-xl bg-red-950/30 border-2 border-red-900/50 flex flex-col items-center justify-center gap-2 p-4">

@@ -6,28 +6,45 @@ import { AngleSelector } from './components/AngleSelector'
 import { ResultsGrid } from './components/ResultsGrid'
 import type { ResultImage } from './types'
 
-async function generateOne(
+const RATE_LIMIT_WAIT_MS = 62_000 // just over 1 minute — clears the RPM window
+const MAX_AUTO_RETRIES = 3
+
+/** Calls the generate endpoint, auto-retrying up to MAX_AUTO_RETRIES times on rate-limit errors. */
+async function generateWithRetry(
   spaceImageBase64: string,
   objectImageBase64: string,
   params: object,
   angle: string,
+  onRateLimited: (retriesLeft: number, waitSecs: number) => void,
 ): Promise<{ base64: string; mimeType: string }> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 130_000)
-  try {
-    const res = await fetch('/api/generate/single', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ spaceImageBase64, objectImageBase64, params, angle }),
-      signal: controller.signal,
-    })
-    const data = await res.json() as { base64?: string; mimeType?: string; message?: string }
-    if (!res.ok) throw new Error(data.message ?? `Server error ${res.status}`)
-    if (!data.base64) throw new Error('No image returned from server.')
-    return { base64: data.base64, mimeType: data.mimeType ?? 'image/jpeg' }
-  } finally {
-    clearTimeout(timeout)
+  for (let attempt = 0; attempt <= MAX_AUTO_RETRIES; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 130_000)
+    try {
+      const res = await fetch('/api/generate/single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spaceImageBase64, objectImageBase64, params, angle }),
+        signal: controller.signal,
+      })
+      const data = await res.json() as { base64?: string; mimeType?: string; message?: string; error?: string }
+
+      // Rate limit — wait and auto-retry
+      if ((res.status === 429 || data.error === 'RATE_LIMIT') && attempt < MAX_AUTO_RETRIES) {
+        const retriesLeft = MAX_AUTO_RETRIES - attempt
+        onRateLimited(retriesLeft, Math.ceil(RATE_LIMIT_WAIT_MS / 1000))
+        await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS))
+        continue
+      }
+
+      if (!res.ok) throw new Error(data.message ?? `Server error ${res.status}`)
+      if (!data.base64) throw new Error('No image returned from server.')
+      return { base64: data.base64, mimeType: data.mimeType ?? 'image/jpeg' }
+    } finally {
+      clearTimeout(timeout)
+    }
   }
+  throw new Error('Rate limit persists after retries. Wait a few minutes and try again.')
 }
 
 export default function App() {
@@ -55,13 +72,17 @@ export default function App() {
     for (let i = 0; i < angles.length; i++) {
       const angle = angles[i]
 
-      // Mark this slot as generating when its turn arrives
       if (i > 0) updateResult(angle, { status: 'generating' })
 
-      // Fire the request and update the slot when it resolves
       const run = async () => {
         try {
-          const { base64, mimeType } = await generateOne(spaceImageBase64, objectImageBase64, params, angle)
+          const { base64, mimeType } = await generateWithRetry(
+            spaceImageBase64, objectImageBase64, params, angle,
+            (retriesLeft, waitSecs) => updateResult(angle, {
+              status: 'retrying',
+              errorMessage: `Rate limited — auto-retrying in ${waitSecs}s (${retriesLeft} attempt${retriesLeft !== 1 ? 's' : ''} left)`,
+            }),
+          )
           updateResult(angle, { status: 'done', base64, mimeType })
         } catch (err) {
           updateResult(angle, { status: 'error', errorMessage: err instanceof Error ? err.message : 'Generation failed.' })
@@ -69,12 +90,10 @@ export default function App() {
       }
 
       if (i === angles.length - 1) {
-        // Last one — await it so setGenerating(false) fires after it finishes
         await run()
       } else {
-        // Fire and wait for the stagger delay before starting the next
         void run()
-        await new Promise((res) => setTimeout(res, STAGGER_MS))
+        await new Promise((r) => setTimeout(r, STAGGER_MS))
       }
     }
 
@@ -84,7 +103,13 @@ export default function App() {
   const handleRetry = (angle: string) => {
     if (!spaceImageBase64 || !objectImageBase64) return
     updateResult(angle, { status: 'generating', base64: undefined, errorMessage: undefined })
-    generateOne(spaceImageBase64, objectImageBase64, params, angle)
+    generateWithRetry(
+      spaceImageBase64, objectImageBase64, params, angle,
+      (retriesLeft, waitSecs) => updateResult(angle, {
+        status: 'retrying',
+        errorMessage: `Rate limited — auto-retrying in ${waitSecs}s (${retriesLeft} attempt${retriesLeft !== 1 ? 's' : ''} left)`,
+      }),
+    )
       .then(({ base64, mimeType }) => updateResult(angle, { status: 'done', base64, mimeType }))
       .catch((err) => updateResult(angle, { status: 'error', errorMessage: err instanceof Error ? err.message : 'Generation failed.' }))
   }

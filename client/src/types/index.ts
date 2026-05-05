@@ -14,7 +14,7 @@ export interface GenerationParams {
   freeNote: string
 }
 
-export type ImageStatus = 'idle' | 'generating' | 'done' | 'error'
+export type ImageStatus = 'idle' | 'generating' | 'retrying' | 'done' | 'error'
 
 export interface ResultImage {
   angle: string
