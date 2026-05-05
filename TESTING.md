@@ -73,3 +73,20 @@ Open `http://localhost:5173` and check each item:
 - [ ] After all 4 finish, is a 2×2 grid of images visible?
 - [ ] With a missing or wrong API key in `.env`: does a readable error message appear in the failed slots (no crash)?
 - [ ] After a successful generation, can you change a parameter and click Generate again to produce new images?
+
+---
+
+## Phase 6 — Results Display & Downloads
+
+Open `http://localhost:5173` and check each item:
+
+- [ ] Are the 4 images displayed in a 2×2 grid with angle labels below each?
+- [ ] Does each image fade in smoothly as it arrives?
+- [ ] Click an image — does a full-screen lightbox open?
+- [ ] Does pressing Escape close the lightbox?
+- [ ] Does clicking outside the image close the lightbox?
+- [ ] Click **↓ Save** under one image — does a JPEG file download?
+- [ ] Is the downloaded file named `sceneforge-[angle-name].jpg`?
+- [ ] Click **↓ Download all as ZIP** — does a ZIP file download?
+- [ ] Open the ZIP — are all completed images inside, correctly named?
+- [ ] If one slot has an error, does a **↺ Retry this angle** button appear?
