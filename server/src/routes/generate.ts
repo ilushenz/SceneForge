@@ -36,12 +36,16 @@ generateRouter.post('/single', async (req: Request, res: Response) => {
       if (parsed?.error?.message) message = parsed.error.message
     } catch { /* not JSON — use raw */ }
 
+    const lower = message.toLowerCase()
+
     if (raw === 'API_KEY_MISSING') {
       res.status(500).json({ error: 'API_KEY_MISSING', message: 'Gemini API key is not set. Add your key to the .env file.' })
     } else if (raw === 'SAFETY_REFUSAL') {
       res.status(422).json({ error: 'SAFETY_REFUSAL', message: 'This angle could not be generated. Try adjusting the parameters or note.' })
-    } else if (message.includes('429') || message.toLowerCase().includes('quota') || message.toLowerCase().includes('resource_exhausted')) {
-      res.status(429).json({ error: 'RATE_LIMIT', message: 'Rate limit reached for this model. Wait a minute and retry.' })
+    } else if (lower.includes('429') || lower.includes('quota') || lower.includes('resource_exhausted') || lower.includes('too many requests')) {
+      res.status(429).json({ error: 'RATE_LIMIT', message: 'Rate limit reached — wait about a minute, then retry.' })
+    } else if (lower.includes('503') || lower.includes('unavailable') || lower.includes('overloaded')) {
+      res.status(503).json({ error: 'SERVICE_UNAVAILABLE', message: 'The AI service is temporarily busy. Wait a moment, then retry.' })
     } else {
       res.status(500).json({ error: 'GENERATION_FAILED', message })
     }

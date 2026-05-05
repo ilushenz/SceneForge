@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import JSZip from 'jszip'
 import type { ResultImage } from '../../types'
 import { Lightbox } from '../Lightbox'
@@ -40,6 +40,8 @@ async function downloadZip(results: ResultImage[]) {
   URL.revokeObjectURL(link.href)
 }
 
+const RETRY_COOLDOWN_MS = 60_000 // 1 minute — respects the 2 RPM free-tier limit
+
 function ImageCard({
   result,
   onRetry,
@@ -49,6 +51,24 @@ function ImageCard({
   onRetry: (a: string) => void
   onOpen: (r: ResultImage) => void
 }) {
+  const lastRetry = useRef<number>(0)
+  const [cooldown, setCooldown] = useState(0) // seconds remaining
+
+  const handleRetry = () => {
+    const elapsed = Date.now() - lastRetry.current
+    const remaining = Math.ceil((RETRY_COOLDOWN_MS - elapsed) / 1000)
+    if (remaining > 0) { setCooldown(remaining); return }
+    lastRetry.current = Date.now()
+    onRetry(result.angle)
+    // Count down the display
+    let secs = Math.ceil(RETRY_COOLDOWN_MS / 1000)
+    setCooldown(secs)
+    const iv = setInterval(() => {
+      secs -= 1
+      setCooldown(secs)
+      if (secs <= 0) clearInterval(iv)
+    }, 1000)
+  }
   if (result.status === 'generating') {
     return (
       <div className="aspect-square rounded-xl bg-gray-800 border border-gray-700 flex flex-col items-center justify-center gap-3 p-4">
@@ -68,10 +88,11 @@ function ImageCard({
         <p className="text-[11px] font-semibold text-gray-300 text-center">{result.angle}</p>
         <p className="text-[10px] text-red-400 text-center leading-tight line-clamp-3">{result.errorMessage}</p>
         <button
-          onClick={() => onRetry(result.angle)}
-          className="mt-1 text-[11px] font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2"
+          onClick={handleRetry}
+          disabled={cooldown > 0}
+          className="mt-1 text-[11px] font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2 disabled:text-gray-600 disabled:no-underline disabled:cursor-not-allowed"
         >
-          ↺ Retry this angle
+          {cooldown > 0 ? `Wait ${cooldown}s before retrying` : '↺ Retry this angle'}
         </button>
       </div>
     )
