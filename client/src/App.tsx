@@ -42,15 +42,42 @@ export default function App() {
   const runGeneration = useCallback(async (angles: string[]) => {
     if (!spaceImageBase64 || !objectImageBase64) return
     setGenerating(true)
-    setResults(angles.map((angle): ResultImage => ({ angle, status: 'generating' })))
-    await Promise.all(angles.map(async (angle) => {
-      try {
-        const { base64, mimeType } = await generateOne(spaceImageBase64, objectImageBase64, params, angle)
-        updateResult(angle, { status: 'done', base64, mimeType })
-      } catch (err) {
-        updateResult(angle, { status: 'error', errorMessage: err instanceof Error ? err.message : 'Generation failed.' })
+
+    // Initialise all slots — first is 'generating', rest show as idle until their turn
+    setResults(angles.map((angle, i): ResultImage => ({
+      angle,
+      status: i === 0 ? 'generating' : 'idle',
+    })))
+
+    // Free-tier limit is 2 RPM for this model — stagger each call by 35 s to stay safe
+    const STAGGER_MS = 35_000
+
+    for (let i = 0; i < angles.length; i++) {
+      const angle = angles[i]
+
+      // Mark this slot as generating when its turn arrives
+      if (i > 0) updateResult(angle, { status: 'generating' })
+
+      // Fire the request and update the slot when it resolves
+      const run = async () => {
+        try {
+          const { base64, mimeType } = await generateOne(spaceImageBase64, objectImageBase64, params, angle)
+          updateResult(angle, { status: 'done', base64, mimeType })
+        } catch (err) {
+          updateResult(angle, { status: 'error', errorMessage: err instanceof Error ? err.message : 'Generation failed.' })
+        }
       }
-    }))
+
+      if (i === angles.length - 1) {
+        // Last one — await it so setGenerating(false) fires after it finishes
+        await run()
+      } else {
+        // Fire and wait for the stagger delay before starting the next
+        void run()
+        await new Promise((res) => setTimeout(res, STAGGER_MS))
+      }
+    }
+
     setGenerating(false)
   }, [spaceImageBase64, objectImageBase64, params, setResults, updateResult])
 

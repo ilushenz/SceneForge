@@ -111,9 +111,14 @@ function ImageCard({
     )
   }
 
+  // idle — queued, waiting its turn
   return (
-    <div className="aspect-square rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center">
-      <span className="text-gray-600 text-3xl">⏳</span>
+    <div className="aspect-square rounded-xl bg-gray-800 border border-gray-700 flex flex-col items-center justify-center gap-2 p-4">
+      <span className="text-gray-600 text-2xl">⏳</span>
+      <div className="text-center">
+        <p className="text-[11px] font-semibold text-gray-500">{result.angle}</p>
+        <p className="text-[10px] text-gray-600 mt-0.5">Queued — starts in ~35 s</p>
+      </div>
     </div>
   )
 }
