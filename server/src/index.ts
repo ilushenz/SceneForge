@@ -9,7 +9,14 @@
  *   from the .env file which is listed in .gitignore.
  */
 
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+// Load .env from the project root (one level above the server/ folder)
+const __dirname = dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: join(__dirname, '../../.env') })
+
 import express from 'express'
 import cors from 'cors'
 import { generateRouter } from './routes/generate.js'
