@@ -52,11 +52,24 @@ Open `http://localhost:5173` and check each item:
 
 Open `http://localhost:5173` and check each item:
 
-- [ ] Is a 12-card angle grid visible below the configuration form?
-- [ ] Does clicking a card highlight it (blue border)?
-- [ ] Does the "X of 4 selected" counter update in real time?
-- [ ] Is the counter red when fewer than 4 are selected?
-- [ ] Does the counter turn green when exactly 4 are selected?
-- [ ] When you click a 5th card, does the first-selected card automatically deselect (so you stay at 4)?
-- [ ] Does the Generate button activate (turn blue) only when both photos are uploaded AND exactly 4 angles are selected?
+- [x] Is a 12-card angle grid visible below the configuration form?
+- [x] Does clicking a card highlight it (blue border)?
+- [x] Does the "X of 4 selected" counter update in real time?
+- [x] Is the counter red when fewer than 4 are selected?
+- [x] Does the counter turn green when exactly 4 are selected?
+- [x] When you click a 5th card, does the first-selected card automatically deselect (so you stay at 4)?
+- [x] Does the Generate button activate (turn blue) only when both photos are uploaded AND exactly 4 angles are selected?
 - [ ] Are the angle cards keyboard-accessible (Tab to navigate, Space/Enter to select)?
+
+---
+
+## Phase 5 — API Integration & Generation
+
+Open `http://localhost:5173` and check each item:
+
+- [ ] Upload both photos, select 4 angles, click Generate
+- [ ] Do 4 progress spinners appear immediately in the results panel, each labelled with an angle name?
+- [ ] Do images appear in their slots as each one finishes (not all at once)?
+- [ ] After all 4 finish, is a 2×2 grid of images visible?
+- [ ] With a missing or wrong API key in `.env`: does a readable error message appear in the failed slots (no crash)?
+- [ ] After a successful generation, can you change a parameter and click Generate again to produce new images?
