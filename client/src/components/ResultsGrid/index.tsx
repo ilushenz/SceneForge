@@ -8,11 +8,11 @@ interface ResultsGridProps {
 function StatusCard({ result, onRetry }: { result: ResultImage; onRetry: (a: string) => void }) {
   if (result.status === 'generating') {
     return (
-      <div className="aspect-square rounded-xl bg-gray-100 flex flex-col items-center justify-center gap-3 p-4">
-        <div className="w-8 h-8 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+      <div className="aspect-square rounded-xl bg-gray-800 border border-gray-700 flex flex-col items-center justify-center gap-3 p-4">
+        <div className="w-8 h-8 border-4 border-blue-900 border-t-blue-500 rounded-full animate-spin" />
         <div className="text-center space-y-1">
-          <p className="text-xs font-semibold text-gray-600">{result.angle}</p>
-          <p className="text-[10px] text-gray-400">Generating… usually 30–90 s</p>
+          <p className="text-xs font-semibold text-gray-300">{result.angle}</p>
+          <p className="text-[10px] text-gray-500">Generating… usually 30–90 s</p>
         </div>
       </div>
     )
@@ -20,13 +20,13 @@ function StatusCard({ result, onRetry }: { result: ResultImage; onRetry: (a: str
 
   if (result.status === 'error') {
     return (
-      <div className="aspect-square rounded-xl bg-red-50 border-2 border-red-100 flex flex-col items-center justify-center gap-2 p-4">
+      <div className="aspect-square rounded-xl bg-red-950/30 border-2 border-red-900/50 flex flex-col items-center justify-center gap-2 p-4">
         <span className="text-2xl">⚠️</span>
-        <p className="text-[11px] font-semibold text-gray-600 text-center">{result.angle}</p>
-        <p className="text-[10px] text-red-500 text-center leading-tight">{result.errorMessage}</p>
+        <p className="text-[11px] font-semibold text-gray-300 text-center">{result.angle}</p>
+        <p className="text-[10px] text-red-400 text-center leading-tight">{result.errorMessage}</p>
         <button
           onClick={() => onRetry(result.angle)}
-          className="mt-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 underline underline-offset-2"
+          className="mt-1 text-[11px] font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2"
         >
           ↺ Retry this angle
         </button>
@@ -36,25 +36,24 @@ function StatusCard({ result, onRetry }: { result: ResultImage; onRetry: (a: str
 
   if (result.status === 'done' && result.base64) {
     return (
-      <div className="rounded-xl overflow-hidden bg-gray-100 flex flex-col">
-        <div className="relative flex-1 aspect-square">
+      <div className="rounded-xl overflow-hidden bg-gray-800 border border-gray-700 flex flex-col">
+        <div className="aspect-square">
           <img
             src={`data:${result.mimeType ?? 'image/jpeg'};base64,${result.base64}`}
             alt={result.angle}
             className="w-full h-full object-cover"
           />
         </div>
-        <div className="px-3 py-2">
-          <p className="text-[11px] font-semibold text-gray-700 truncate">{result.angle}</p>
+        <div className="px-3 py-2 border-t border-gray-700">
+          <p className="text-[11px] font-semibold text-gray-400 truncate">{result.angle}</p>
         </div>
       </div>
     )
   }
 
-  // idle
   return (
-    <div className="aspect-square rounded-xl bg-gray-100 flex items-center justify-center">
-      <span className="text-gray-300 text-3xl">⏳</span>
+    <div className="aspect-square rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center">
+      <span className="text-gray-600 text-3xl">⏳</span>
     </div>
   )
 }
@@ -62,10 +61,10 @@ function StatusCard({ result, onRetry }: { result: ResultImage; onRetry: (a: str
 export function ResultsGrid({ results, onRetry }: ResultsGridProps) {
   if (results.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
-        <div className="text-5xl text-gray-200">🖼️</div>
-        <p className="text-base font-medium text-gray-400">Your generated images will appear here</p>
-        <p className="text-sm text-gray-300">Upload photos, configure parameters, select 4 angles, then click Generate.</p>
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8 min-h-[400px]">
+        <div className="text-5xl opacity-20">🖼️</div>
+        <p className="text-base font-medium text-gray-500">Your generated images will appear here</p>
+        <p className="text-sm text-gray-600">Upload photos, configure parameters, select 4 angles, then click Generate.</p>
       </div>
     )
   }
