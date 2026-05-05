@@ -66,7 +66,7 @@ function ImageCard({
       <div className="aspect-square rounded-xl bg-red-950/30 border-2 border-red-900/50 flex flex-col items-center justify-center gap-2 p-4">
         <span className="text-2xl">⚠️</span>
         <p className="text-[11px] font-semibold text-gray-300 text-center">{result.angle}</p>
-        <p className="text-[10px] text-red-400 text-center leading-tight">{result.errorMessage}</p>
+        <p className="text-[10px] text-red-400 text-center leading-tight line-clamp-3">{result.errorMessage}</p>
         <button
           onClick={() => onRetry(result.angle)}
           className="mt-1 text-[11px] font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2"
