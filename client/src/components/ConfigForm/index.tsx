@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react'
 import { useSessionStore } from '../../stores/sessionStore'
 import type { ObjectType, ObjectSize, Placement, TimeOfDay, Weather } from '../../types'
 import { RadioCardGroup } from './RadioCardGroup'
@@ -14,6 +15,7 @@ const SIZE_OPTIONS = [
   { value: 'medium',      label: 'Medium',      description: '50 cm – 1.5 m', icon: '○' },
   { value: 'large',       label: 'Large',       description: '1.5 – 3 m',    icon: '◎' },
   { value: 'monumental',  label: 'Monumental',  description: '> 3 m',         icon: '⬤' },
+  { value: 'custom',      label: 'Custom',      description: 'Describe below', icon: '✎' },
 ]
 
 const PLACEMENT_OPTIONS = [
@@ -44,6 +46,12 @@ const WEATHER_OPTIONS = [
 export function ConfigForm() {
   const { params, setParam } = useSessionStore()
   const noteLen = params.freeNote.length
+  const customSizeRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus the custom size input when the user selects "Custom"
+  useEffect(() => {
+    if (params.objectSize === 'custom') customSizeRef.current?.focus()
+  }, [params.objectSize])
 
   return (
     <section className="space-y-5">
@@ -57,13 +65,27 @@ export function ConfigForm() {
         columns={2}
       />
 
-      <RadioCardGroup
-        label="Object size"
-        options={SIZE_OPTIONS}
-        value={params.objectSize}
-        onChange={(v) => setParam('objectSize', v as ObjectSize)}
-        columns={4}
-      />
+      <div className="space-y-2">
+        <RadioCardGroup
+          label="Object size"
+          options={SIZE_OPTIONS}
+          value={params.objectSize}
+          onChange={(v) => setParam('objectSize', v as ObjectSize)}
+          columns={4}
+        />
+        {params.objectSize === 'custom' && (
+          <input
+            ref={customSizeRef}
+            type="text"
+            maxLength={120}
+            placeholder="e.g. 80 cm tall, about knee height"
+            value={params.customSizeDescription}
+            onChange={(e) => setParam('customSizeDescription', e.target.value)}
+            className="w-full text-sm rounded-xl border-2 border-brand-500 bg-brand-50 px-3 py-2
+              placeholder:text-gray-300 focus:outline-none focus:border-brand-600 transition-colors"
+          />
+        )}
+      </div>
 
       <RadioCardGroup
         label="Placement"

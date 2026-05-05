@@ -62,7 +62,10 @@ const WEATHER_DESCRIPTIONS: Record<string, string> = {
 /** Assembles a photorealistic compositing prompt from the user's parameter selections and one selected angle. */
 export function buildPrompt(params: GenerationParams, angleName: string): string {
   const angleDescription = ANGLE_PRESETS[angleName]
-  const sizeDescription = SIZE_DESCRIPTIONS[params.objectSize]
+  const sizeDescription =
+    params.objectSize === 'custom' && params.customSizeDescription.trim()
+      ? params.customSizeDescription.trim()
+      : SIZE_DESCRIPTIONS[params.objectSize] ?? 'medium — between 50 centimetres and 1.5 metres tall'
   const placementDescription = PLACEMENT_DESCRIPTIONS[params.placement]
   const lightingDescription = LIGHTING_DESCRIPTIONS[params.timeOfDay]
   const weatherDescription = WEATHER_DESCRIPTIONS[params.weather]

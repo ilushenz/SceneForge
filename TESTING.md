@@ -33,15 +33,15 @@ Open `http://localhost:5173` and check each item:
 
 Open `http://localhost:5173` and check each item:
 
-- [ ] Are all five parameter sections visible in the left panel below the upload zones? (Object type, Object size, Placement, Time of day, Weather)
-- [ ] Do the radio cards highlight with a blue border when selected?
-- [ ] Is **Freestanding 3D object** pre-selected for Object type?
-- [ ] Is **Medium** pre-selected for Object size?
-- [ ] Is **Centre** pre-selected for Placement?
-- [ ] Is **Golden hour** pre-selected for Time of day?
-- [ ] Is **Clear sky** pre-selected for Weather?
-- [ ] Can you select each option in each section (only one at a time highlights)?
-- [ ] Is the Additional note textarea visible with placeholder text?
-- [ ] Does the character counter update as you type in the note field?
-- [ ] Does the counter turn red when you reach 500 characters?
-- [ ] Does the left panel scroll smoothly to show all sections?
+- [x] Are all five parameter sections visible in the left panel below the upload zones? (Object type, Object size, Placement, Time of day, Weather)
+- [x] Do the radio cards highlight with a blue border when selected?
+- [x] Is **Freestanding 3D object** pre-selected for Object type?
+- [x] Is **Medium** pre-selected for Object size?
+- [x] Is **Centre** pre-selected for Placement?
+- [x] Is **Golden hour** pre-selected for Time of day?
+- [x] Is **Clear sky** pre-selected for Weather?
+- [x] Can you select each option in each section (only one at a time highlights)?
+- [x] Is the Additional note textarea visible with placeholder text?
+- [x] Does the character counter update as you type in the note field?
+- [x] Does the counter turn red when you reach 500 characters?
+- [x] Does the left panel scroll smoothly to show all sections?

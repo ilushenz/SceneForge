@@ -4,6 +4,7 @@ import type { GenerationParams, ResultImage, SessionState } from '../types'
 const DEFAULT_PARAMS: GenerationParams = {
   objectType: 'freestanding',
   objectSize: 'medium',
+  customSizeDescription: '',
   placement: 'centre',
   timeOfDay: 'golden hour',
   weather: 'clear sky',
