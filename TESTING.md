@@ -45,3 +45,18 @@ Open `http://localhost:5173` and check each item:
 - [x] Does the character counter update as you type in the note field?
 - [x] Does the counter turn red when you reach 500 characters?
 - [x] Does the left panel scroll smoothly to show all sections?
+
+---
+
+## Phase 4 — Angle Selector
+
+Open `http://localhost:5173` and check each item:
+
+- [ ] Is a 12-card angle grid visible below the configuration form?
+- [ ] Does clicking a card highlight it (blue border)?
+- [ ] Does the "X of 4 selected" counter update in real time?
+- [ ] Is the counter red when fewer than 4 are selected?
+- [ ] Does the counter turn green when exactly 4 are selected?
+- [ ] When you click a 5th card, does the first-selected card automatically deselect (so you stay at 4)?
+- [ ] Does the Generate button activate (turn blue) only when both photos are uploaded AND exactly 4 angles are selected?
+- [ ] Are the angle cards keyboard-accessible (Tab to navigate, Space/Enter to select)?
