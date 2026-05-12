@@ -1,29 +1,108 @@
 /**
  * ObjectRotationControl
  *
- * An optional control that lets the user specify how many degrees clockwise
- * the object should be rotated around its vertical axis before being placed
- * in the scene, relative to its orientation in the reference photo.
- *
- * Visual: a CSS 3D box that rotates in real-time as the user drags, plus
- * a degree readout and a circular drag handle track.
+ * Lets the user rotate the object around its vertical axis before compositing.
+ * Visual: an SVG-rendered 3D box with proper perspective projection, back-face
+ * culling, and painter's-algorithm face ordering. Drag the box or the dial
+ * handle to set the rotation angle.
  */
 
 import { useCallback, useRef } from 'react'
 
-// ── Box dimensions ────────────────────────────────────────────────────────────
-const W = 52   // width  (px)
-const H = 84   // height (px)
-const D = 30   // depth  (px)
+// ── 3D box geometry ───────────────────────────────────────────────────────────
 
-// ── Face colours (dark theme) ─────────────────────────────────────────────────
-const FRONT  = '#4B5563'   // gray-600
-const SIDE   = '#374151'   // gray-700
-const TOP    = '#6B7280'   // gray-500 (lighter — catches "light")
-const BOTTOM = '#1F2937'   // gray-800
+const BW = 26, BH = 42, BD = 14  // half-dimensions
+
+const CORNERS_DEF: [number, number, number][] = [
+  [-BW, -BH, -BD],  // 0 left-top-back
+  [ BW, -BH, -BD],  // 1 right-top-back
+  [ BW,  BH, -BD],  // 2 right-bottom-back
+  [-BW,  BH, -BD],  // 3 left-bottom-back
+  [-BW, -BH,  BD],  // 4 left-top-front
+  [ BW, -BH,  BD],  // 5 right-top-front
+  [ BW,  BH,  BD],  // 6 right-bottom-front
+  [-BW,  BH,  BD],  // 7 left-bottom-front
+]
+
+// Face index lists + shading; first face is the "front" (gets the arrow)
+const FACE_DEFS = [
+  { idx: [4, 5, 6, 7], color: '#4f6171', isFront: true  },  // z+ front
+  { idx: [5, 1, 2, 6], color: '#3a4a5a', isFront: false },  // x+ right
+  { idx: [0, 4, 7, 3], color: '#3a4a5a', isFront: false },  // x- left
+  { idx: [4, 0, 1, 5], color: '#6b7a8a', isFront: false },  // y- top
+  { idx: [7, 6, 2, 3], color: '#1a2530', isFront: false },  // y+ bottom
+  { idx: [1, 0, 3, 2], color: '#2a3440', isFront: false },  // z- back
+]
+
+const FOCAL = 280
+const SVG_W = 130, SVG_H = 110
+const CX = SVG_W / 2, CY = SVG_H / 2 + 4  // shift slightly down so tilt shows top
+
+/** Apply Y-rotation + fixed -14° X-tilt, return transformed corners. */
+function transform(yDeg: number): [number, number, number][] {
+  const yr = (yDeg * Math.PI) / 180
+  const yc = Math.cos(yr), ys = Math.sin(yr)
+  const xr = (-14 * Math.PI) / 180
+  const xc = Math.cos(xr), xs = Math.sin(xr)
+
+  return CORNERS_DEF.map(([x, y, z]) => {
+    // Y rotation
+    const x2 = x * yc + z * ys
+    const z2 = -x * ys + z * yc
+    // X tilt
+    const y3 = y * xc - z2 * xs
+    const z3 = y * xs + z2 * xc
+    return [x2, y3, z3]
+  })
+}
+
+/** Perspective project 3D corners to SVG 2D coords. */
+function project(pts3d: [number, number, number][]): [number, number][] {
+  return pts3d.map(([x, y, z]) => {
+    const s = FOCAL / (FOCAL - z)
+    return [CX + x * s, CY + y * s]
+  })
+}
+
+/** 2D signed area — positive = clockwise in screen space (Y-down) = facing camera. */
+function signedArea(pts2d: [number, number][], idx: number[]): number {
+  const [x0, y0] = pts2d[idx[0]]
+  const [x1, y1] = pts2d[idx[1]]
+  const [x2, y2] = pts2d[idx[2]]
+  return (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
+}
+
+/** Average Z of a face (for painter's algorithm — draw farthest first). */
+function avgZ(pts3d: [number, number, number][], idx: number[]): number {
+  return idx.reduce((sum, i) => sum + pts3d[i][2], 0) / idx.length
+}
+
+function toPoints(pts2d: [number, number][], idx: number[]): string {
+  return idx.map(i => pts2d[i].map(v => v.toFixed(1)).join(',')).join(' ')
+}
+
+// ── Dial constants ────────────────────────────────────────────────────────────
+
+const DIAL_R = 44, DCX = 52, DCY = 52
+
+function handlePos(deg: number): [number, number] {
+  const r = ((deg - 90) * Math.PI) / 180
+  return [DCX + DIAL_R * Math.cos(r), DCY + DIAL_R * Math.sin(r)]
+}
+
+function arcPath(deg: number): string {
+  if (deg <= 0) return ''
+  if (deg >= 360) return `M ${DCX} ${DCY - DIAL_R} A ${DIAL_R} ${DIAL_R} 0 1 1 ${DCX - 0.01} ${DCY - DIAL_R} Z`
+  const r = ((deg - 90) * Math.PI) / 180
+  const ex = DCX + DIAL_R * Math.cos(r)
+  const ey = DCY + DIAL_R * Math.sin(r)
+  const lg = deg > 180 ? 1 : 0
+  return `M ${DCX} ${DCY - DIAL_R} A ${DIAL_R} ${DIAL_R} 0 ${lg} 1 ${ex} ${ey}`
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  /** Current rotation in degrees (0–359), or null if not set */
   value: number | null
   onChange: (degrees: number | null) => void
 }
@@ -32,102 +111,96 @@ export function ObjectRotationControl({ value, onChange }: Props) {
   const enabled = value !== null
   const angle = value ?? 0
 
-  // ── Drag state ──────────────────────────────────────────────────────────────
-  const dragging = useRef(false)
-  const dragStartX = useRef(0)
-  const dragStartAngle = useRef(0)
-  const dragAreaRef = useRef<HTMLDivElement>(null)
+  // ── Box drag ──────────────────────────────────────────────────────────────
 
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
+  const boxDragging = useRef(false)
+  const boxStartX = useRef(0)
+  const boxStartAngle = useRef(0)
+
+  const onBoxPointerDown = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
     if (!enabled) return
     e.currentTarget.setPointerCapture(e.pointerId)
-    dragging.current = true
-    dragStartX.current = e.clientX
-    dragStartAngle.current = angle
+    boxDragging.current = true
+    boxStartX.current = e.clientX
+    boxStartAngle.current = angle
   }, [enabled, angle])
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragging.current) return
-    const delta = e.clientX - dragStartX.current
-    // 1.5 degrees per pixel — fast enough to cover 360° in ~240px drag
-    const raw = dragStartAngle.current + delta * 1.5
+  const onBoxPointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    if (!boxDragging.current) return
+    const delta = e.clientX - boxStartX.current
+    const raw = boxStartAngle.current + delta * 1.5
     onChange(((Math.round(raw) % 360) + 360) % 360)
   }, [onChange])
 
-  const onPointerUp = useCallback(() => { dragging.current = false }, [])
+  const onBoxPointerUp = useCallback(() => { boxDragging.current = false }, [])
 
-  // Touch equivalents
-  const lastTouchX = useRef(0)
-  const onTouchStart = (e: React.TouchEvent) => {
+  // Touch (box)
+  const onBoxTouchStart = (e: React.TouchEvent) => {
     if (!enabled) return
-    dragging.current = true
-    lastTouchX.current = e.touches[0].clientX
-    dragStartAngle.current = angle
-    dragStartX.current = e.touches[0].clientX
+    boxDragging.current = true
+    boxStartX.current = e.touches[0].clientX
+    boxStartAngle.current = angle
   }
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!dragging.current) return
+  const onBoxTouchMove = (e: React.TouchEvent) => {
+    if (!boxDragging.current) return
     e.preventDefault()
-    const delta = e.touches[0].clientX - dragStartX.current
-    const raw = dragStartAngle.current + delta * 1.5
+    const delta = e.touches[0].clientX - boxStartX.current
+    const raw = boxStartAngle.current + delta * 1.5
     onChange(((Math.round(raw) % 360) + 360) % 360)
   }
-  const onTouchEnd = () => { dragging.current = false }
+  const onBoxTouchEnd = () => { boxDragging.current = false }
 
-  // ── Circular dial ───────────────────────────────────────────────────────────
-  // A small SVG arc that fills based on angle, with a draggable handle dot.
-  const DIAL_R = 46          // radius of the dial arc (svg units)
-  const CX = 54; const CY = 54   // centre of the dial SVG
-  const dialAngleRad = ((angle - 90) * Math.PI) / 180  // -90 so 0° starts at top
-  const handleX = CX + DIAL_R * Math.cos(dialAngleRad)
-  const handleY = CY + DIAL_R * Math.sin(dialAngleRad)
+  // ── Dial drag ─────────────────────────────────────────────────────────────
 
-  // Arc path from top (0°) to current angle
-  function arcPath(degrees: number) {
-    if (degrees <= 0) return ''
-    if (degrees >= 360) {
-      // Full circle
-      return `M ${CX} ${CY - DIAL_R} A ${DIAL_R} ${DIAL_R} 0 1 1 ${CX - 0.01} ${CY - DIAL_R} Z`
-    }
-    const endRad = ((degrees - 90) * Math.PI) / 180
-    const ex = CX + DIAL_R * Math.cos(endRad)
-    const ey = CY + DIAL_R * Math.sin(endRad)
-    const large = degrees > 180 ? 1 : 0
-    return `M ${CX} ${CY - DIAL_R} A ${DIAL_R} ${DIAL_R} 0 ${large} 1 ${ex} ${ey}`
-  }
-
-  // SVG pointer events for the dial handle
   const dialDragging = useRef(false)
-  const svgRef = useRef<SVGSVGElement>(null)
+  const dialSvgRef = useRef<SVGSVGElement>(null)
 
-  const svgPointerDown = (e: React.PointerEvent<SVGCircleElement>) => {
+  const onDialHandleDown = (e: React.PointerEvent<SVGCircleElement>) => {
     if (!enabled) return
     e.currentTarget.setPointerCapture(e.pointerId)
     dialDragging.current = true
   }
 
-  const svgPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!dialDragging.current || !svgRef.current) return
-    const rect = svgRef.current.getBoundingClientRect()
-    const mx = e.clientX - rect.left
-    const my = e.clientY - rect.top
-    // SVG viewport is 108×108, but the element might be smaller — scale
-    const scaleX = 108 / rect.width
-    const scaleY = 108 / rect.height
-    const dx = mx * scaleX - CX
-    const dy = my * scaleY - CY
-    const rad = Math.atan2(dy, dx)
-    const deg = (((rad * 180) / Math.PI + 90) % 360 + 360) % 360
+  const onDialPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!dialDragging.current || !dialSvgRef.current) return
+    const rect = dialSvgRef.current.getBoundingClientRect()
+    const sx = 104 / rect.width  // viewBox width = 104
+    const sy = 104 / rect.height
+    const dx = (e.clientX - rect.left) * sx - DCX
+    const dy = (e.clientY - rect.top)  * sy - DCY
+    const deg = (((Math.atan2(dy, dx) * 180) / Math.PI + 90) % 360 + 360) % 360
     onChange(Math.round(deg))
   }
 
-  const svgPointerUp = () => { dialDragging.current = false }
+  const onDialPointerUp = () => { dialDragging.current = false }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── 3D render ─────────────────────────────────────────────────────────────
+
+  const pts3d = transform(angle)
+  const pts2d = project(pts3d)
+
+  const visibleFaces = FACE_DEFS
+    .filter(f => signedArea(pts2d, f.idx) > 0)
+    .sort((a, b) => avgZ(pts3d, a.idx) - avgZ(pts3d, b.idx))  // far → near
+
+  // Centre of front face for the arrow
+  const frontFaceVisible = visibleFaces.find(f => f.isFront)
+  const frontCentre = frontFaceVisible
+    ? frontFaceVisible.idx.reduce(
+        ([ax, ay], i) => [ax + pts2d[i][0] / 4, ay + pts2d[i][1] / 4],
+        [0, 0]
+      )
+    : null
+
+  // ── Dial handle position ──────────────────────────────────────────────────
+
+  const [hx, hy] = handlePos(angle)
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-2">
-      {/* Header row */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
           Object rotation
@@ -138,168 +211,102 @@ export function ObjectRotationControl({ value, onChange }: Props) {
             ${enabled ? 'bg-blue-600 border-blue-600' : 'bg-gray-700 border-gray-700'}`}
           role="switch"
           aria-checked={enabled}
-          title={enabled ? 'Disable rotation override' : 'Enable rotation override'}
         >
-          <span
-            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform mt-px
-              ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`}
-          />
+          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform mt-px
+            ${enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
         </button>
       </div>
 
-      {/* Main control */}
-      <div
-        className={`rounded-xl border transition-all overflow-hidden
-          ${enabled
-            ? 'border-gray-700 bg-gray-800/60'
-            : 'border-gray-800 bg-gray-800/20 opacity-50 pointer-events-none select-none'
-          }`}
+      {/* Card */}
+      <div className={`rounded-xl border transition-all overflow-hidden
+        ${enabled
+          ? 'border-gray-700 bg-gray-800/60'
+          : 'border-gray-800 bg-gray-800/20 opacity-40 pointer-events-none select-none'}`}
       >
-        <div className="flex items-center gap-4 px-4 py-3">
-          {/* CSS 3D Box */}
-          <div
-            ref={dragAreaRef}
-            style={{ perspective: '240px', width: W + D, height: H + D / 2 + 8, flexShrink: 0 }}
-            className={enabled ? 'cursor-ew-resize' : 'cursor-default'}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerLeave={onPointerUp}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
+        <div className="flex items-center gap-3 px-3 py-3">
+
+          {/* SVG 3D Box */}
+          <svg
+            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+            width={SVG_W * 0.85}
+            height={SVG_H * 0.85}
+            style={{ cursor: enabled ? 'ew-resize' : 'default', flexShrink: 0 }}
+            onPointerDown={onBoxPointerDown}
+            onPointerMove={onBoxPointerMove}
+            onPointerUp={onBoxPointerUp}
+            onPointerLeave={onBoxPointerUp}
+            onTouchStart={onBoxTouchStart}
+            onTouchMove={onBoxTouchMove}
+            onTouchEnd={onBoxTouchEnd}
           >
-            <div
-              style={{
-                position: 'relative',
-                width: W,
-                height: H,
-                transformStyle: 'preserve-3d',
-                transform: `translateZ(${-D / 2}px) rotateX(-12deg) rotateY(${angle}deg)`,
-                margin: `${D / 3}px 0 0 ${D / 2}px`,
-                userSelect: 'none',
-              }}
-            >
-              {/* Front face */}
-              <div style={{
-                position: 'absolute', width: W, height: H,
-                background: FRONT,
-                transform: `translateZ(${D / 2}px)`,
-                border: '1px solid rgba(255,255,255,0.08)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {/* Forward arrow on front face */}
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <path d="M9 14V4M9 4L5 8M9 4L13 8" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
+            {visibleFaces.map((face, i) => (
+              <polygon
+                key={i}
+                points={toPoints(pts2d, face.idx)}
+                fill={face.color}
+                stroke="rgba(255,255,255,0.07)"
+                strokeWidth="0.6"
+                strokeLinejoin="round"
+              />
+            ))}
 
-              {/* Back face */}
-              <div style={{
-                position: 'absolute', width: W, height: H,
-                background: SIDE,
-                transform: `rotateY(180deg) translateZ(${D / 2}px)`,
-                border: '1px solid rgba(255,255,255,0.04)',
-              }} />
-
-              {/* Right face */}
-              <div style={{
-                position: 'absolute', width: D, height: H,
-                background: SIDE,
-                transform: `rotateY(90deg) translateZ(${W / 2}px)`,
-                border: '1px solid rgba(255,255,255,0.04)',
-              }} />
-
-              {/* Left face */}
-              <div style={{
-                position: 'absolute', width: D, height: H,
-                background: SIDE,
-                transform: `rotateY(-90deg) translateZ(${W / 2}px)`,
-                border: '1px solid rgba(255,255,255,0.04)',
-              }} />
-
-              {/* Top face */}
-              <div style={{
-                position: 'absolute', width: W, height: D,
-                background: TOP,
-                transform: `rotateX(90deg) translateZ(${H / 2}px)`,
-                border: '1px solid rgba(255,255,255,0.1)',
-              }} />
-
-              {/* Bottom face */}
-              <div style={{
-                position: 'absolute', width: W, height: D,
-                background: BOTTOM,
-                transform: `rotateX(-90deg) translateZ(${H / 2}px)`,
-                border: '1px solid rgba(0,0,0,0.2)',
-              }} />
-            </div>
-          </div>
+            {/* Forward-facing arrow on front face */}
+            {frontCentre && (
+              <g transform={`translate(${frontCentre[0]}, ${frontCentre[1]})`} style={{ pointerEvents: 'none' }}>
+                <path
+                  d="M0,-9 L5,3 L0,0 L-5,3 Z"
+                  fill="rgba(255,255,255,0.45)"
+                  strokeLinejoin="round"
+                />
+              </g>
+            )}
+          </svg>
 
           {/* Dial + readout */}
           <div className="flex flex-col items-center gap-1 flex-1">
-            {/* SVG circular dial */}
             <svg
-              ref={svgRef}
-              viewBox="0 0 108 108"
-              width="84"
-              height="84"
-              className={enabled ? 'cursor-crosshair' : ''}
-              onPointerMove={svgPointerMove}
-              onPointerUp={svgPointerUp}
-              onPointerLeave={svgPointerUp}
+              ref={dialSvgRef}
+              viewBox="0 0 104 104"
+              width="80"
+              height="80"
+              onPointerMove={onDialPointerMove}
+              onPointerUp={onDialPointerUp}
+              onPointerLeave={onDialPointerUp}
             >
-              {/* Track ring */}
-              <circle cx={CX} cy={CY} r={DIAL_R} fill="none" stroke="#374151" strokeWidth="5" />
+              {/* Track */}
+              <circle cx={DCX} cy={DCY} r={DIAL_R} fill="none" stroke="#374151" strokeWidth="5" />
 
               {/* Progress arc */}
               {angle > 0 && (
-                <path
-                  d={arcPath(angle)}
-                  fill="none"
-                  stroke="#3B82F6"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                />
+                <path d={arcPath(angle)} fill="none" stroke="#3B82F6"
+                  strokeWidth="5" strokeLinecap="round" />
               )}
 
-              {/* Centre readout */}
-              <text
-                x={CX} y={CY + 1}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="13"
-                fontWeight="700"
-                fill="#E5E7EB"
-                fontFamily="system-ui, sans-serif"
-              >
+              {/* Centre text */}
+              <text x={DCX} y={DCY + 1} textAnchor="middle" dominantBaseline="middle"
+                fontSize="13" fontWeight="700" fill="#E5E7EB"
+                fontFamily="system-ui,sans-serif">
                 {angle}°
               </text>
 
-              {/* Handle dot — draggable */}
-              <circle
-                cx={handleX}
-                cy={handleY}
-                r="7"
-                fill={enabled ? '#3B82F6' : '#4B5563'}
-                stroke="white"
-                strokeWidth="2"
-                style={{ cursor: 'grab' }}
-                onPointerDown={svgPointerDown}
-              />
-
               {/* 0° tick */}
-              <line x1={CX} y1={CY - DIAL_R - 4} x2={CX} y2={CY - DIAL_R + 4}
+              <line x1={DCX} y1={DCY - DIAL_R - 4} x2={DCX} y2={DCY - DIAL_R + 4}
                 stroke="#4B5563" strokeWidth="1.5" strokeLinecap="round" />
+
+              {/* Handle */}
+              <circle cx={hx} cy={hy} r="7"
+                fill={enabled ? '#3B82F6' : '#4B5563'}
+                stroke="white" strokeWidth="1.5"
+                style={{ cursor: 'grab' }}
+                onPointerDown={onDialHandleDown}
+              />
             </svg>
 
-            {/* Label */}
             <p className="text-[10px] text-gray-500 leading-none">
               {angle === 0 ? 'No rotation' : `${angle}° clockwise`}
             </p>
 
-            {/* Reset */}
-            {angle !== 0 && enabled && (
+            {angle !== 0 && (
               <button
                 onClick={() => onChange(0)}
                 className="text-[10px] font-semibold text-gray-600 hover:text-blue-400 transition-colors mt-0.5"
@@ -310,14 +317,13 @@ export function ObjectRotationControl({ value, onChange }: Props) {
           </div>
         </div>
 
-        {/* Drag hint */}
         <p className="text-[10px] text-gray-600 text-center pb-2">
-          Drag the box or handle to rotate
+          Drag the box or the handle to rotate
         </p>
       </div>
 
       {!enabled && (
-        <p className="text-[10px] text-gray-600 leading-tight">
+        <p className="text-[10px] text-gray-600">
           Original orientation from the reference image will be used
         </p>
       )}
