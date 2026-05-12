@@ -32,8 +32,10 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (curl, Postman, same-origin)
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
-    callback(new Error(`CORS: origin ${origin} not allowed`))
+    // Return false (not an Error) so Express sends 403 instead of 500
+    callback(null, false)
   },
+  optionsSuccessStatus: 200,
 }))
 app.use(express.json({ limit: '50mb' }))
 
