@@ -128,7 +128,7 @@ Output requirements:
   }
 
   if (annotationDescription && annotationDescription.trim().length > 0) {
-    prompt += `\n\nAnnotation-based placement override (highest priority — takes precedence over the placement parameter above):\n${annotationDescription.trim()}`
+    prompt += `\n\n=== PLACEMENT OVERRIDE — HIGHEST PRIORITY ===\n${annotationDescription.trim()}\n=== END PLACEMENT OVERRIDE ===`
   }
 
   if (params.freeNote && params.freeNote.trim().length > 0) {
