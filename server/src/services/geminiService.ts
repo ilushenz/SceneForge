@@ -37,13 +37,14 @@ export interface GenerateResult {
   mimeType: string
 }
 
-/** Calls Gemini to composite one image for a single viewing angle. Throws on any failure. */
+/** Calls Gemini to composite one image. Throws on any failure. */
 export async function generateSingleImage(
   spaceImageBase64: string,
   objectImageBase64: string,
   params: GenerationParams,
-  angleName: string,
+  angleName: string | null,
   annotationDescription?: string,
+  objectRotationDegrees?: number,
 ): Promise<GenerateResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim()
   if (!apiKey) {
@@ -57,7 +58,7 @@ export async function generateSingleImage(
     prepareImage(objectImageBase64),
   ])
 
-  const prompt = buildPrompt(params, angleName, annotationDescription)
+  const prompt = buildPrompt(params, angleName, annotationDescription, objectRotationDegrees)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const response = await (ai.models as any).generateContent({

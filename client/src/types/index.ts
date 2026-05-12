@@ -62,7 +62,13 @@ export interface SessionState {
   objectImageBase64: string | null
   objectImageName: string | null
   params: GenerationParams
-  selectedAngles: string[]
+  /** Single selected angle, or null = auto-detect from space photo */
+  selectedAngle: string | null
+  /**
+   * Object rotation override in degrees (0–359), clockwise around vertical axis.
+   * null = use the original orientation from the reference image.
+   */
+  objectRotation: number | null
   results: ResultImage[]
   annotation: AnnotationState
 }

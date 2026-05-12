@@ -60,12 +60,18 @@ const WEATHER_DESCRIPTIONS: Record<string, string> = {
 }
 
 /**
- * Assembles a photorealistic compositing prompt from the user's parameter selections
- * and one selected angle. If `annotationDescription` is provided (non-empty), it is
- * appended as a high-priority placement override.
+ * Assembles a photorealistic compositing prompt from the user's parameter selections.
+ * - `angleName` null → Gemini infers camera angle from the space photo context.
+ * - `annotationDescription` overrides the placement parameter when present.
+ * - `objectRotationDegrees` overrides the object's orientation when present.
  */
-export function buildPrompt(params: GenerationParams, angleName: string, annotationDescription?: string): string {
-  const angleDescription = ANGLE_PRESETS[angleName]
+export function buildPrompt(
+  params: GenerationParams,
+  angleName: string | null,
+  annotationDescription?: string,
+  objectRotationDegrees?: number,
+): string {
+  const angleDescription = angleName ? ANGLE_PRESETS[angleName] : null
   const sizeDescription =
     params.objectSize === 'custom' && params.customSizeDescription.trim()
       ? params.customSizeDescription.trim()
@@ -77,6 +83,11 @@ export function buildPrompt(params: GenerationParams, angleName: string, annotat
     params.objectType === 'flat'
       ? 'a flat, wall-mounted object (such as a painting, panel, or relief)'
       : 'a freestanding three-dimensional object'
+
+  const viewingAngleSection = angleDescription
+    ? `Viewing angle for this image:\n${angleDescription}`
+    : `Viewing angle for this image:\nUse the same camera viewpoint and perspective already established in the first (space) image. ` +
+      `Do not alter the camera position, focal length, or perspective — composite the object as if the original scene photographer simply placed it there.`
 
   const basePrompt = `Place the object shown in the second image into the space shown in the first image.
 
@@ -90,8 +101,7 @@ Lighting and atmosphere:
 - Weather: ${weatherDescription}
 - The object must cast a shadow that is consistent with the direction, intensity, and colour temperature of this lighting. The shadow should fall naturally onto the ground or nearby surfaces.
 
-Viewing angle for this image:
-${angleDescription}
+${viewingAngleSection}
 
 Output requirements:
 - Produce a single photorealistic composite photograph
@@ -101,6 +111,16 @@ Output requirements:
 - Photographic quality with natural depth of field`
 
   let prompt = basePrompt
+
+  if (objectRotationDegrees !== undefined && objectRotationDegrees !== 0) {
+    prompt +=
+      `\n\nObject rotation override (apply before placing in scene):\n` +
+      `Rotate the object exactly ${objectRotationDegrees}° clockwise around its vertical axis relative to ` +
+      `the orientation it is shown in the reference (second) image. ` +
+      `This means the face that is currently pointing forward in the reference should now face ` +
+      `${objectRotationDegrees}° clockwise from its original direction. ` +
+      `Ensure the shadows, highlights, and reflections on the object are consistent with this new orientation.`
+  }
 
   if (annotationDescription && annotationDescription.trim().length > 0) {
     prompt += `\n\nAnnotation-based placement override (highest priority — takes precedence over the placement parameter above):\n${annotationDescription.trim()}`

@@ -14,11 +14,11 @@ const DEFAULT_PARAMS: GenerationParams = {
 const DEFAULT_ANNOTATION: AnnotationState = { strokes: [], line: null }
 
 interface SessionStore extends SessionState {
-  annotation: AnnotationState
   setSpaceImage: (base64: string | null, name: string | null) => void
   setObjectImage: (base64: string | null, name: string | null) => void
   setParam: <K extends keyof GenerationParams>(key: K, value: GenerationParams[K]) => void
-  setSelectedAngles: (angles: string[]) => void
+  setSelectedAngle: (angle: string | null) => void
+  setObjectRotation: (degrees: number | null) => void
   setResults: (results: ResultImage[]) => void
   updateResult: (angle: string, update: Partial<ResultImage>) => void
   clearResults: () => void
@@ -32,7 +32,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
   objectImageBase64: null,
   objectImageName: null,
   params: DEFAULT_PARAMS,
-  selectedAngles: [],
+  selectedAngle: null,
+  objectRotation: null,
   results: [],
   annotation: DEFAULT_ANNOTATION,
 
@@ -42,7 +43,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
   setParam: (key, value) =>
     set((state) => ({ params: { ...state.params, [key]: value } })),
 
-  setSelectedAngles: (angles) => set({ selectedAngles: angles }),
+  setSelectedAngle: (angle) => set({ selectedAngle: angle }),
+
+  setObjectRotation: (degrees) => set({ objectRotation: degrees }),
 
   setResults: (results) => set({ results }),
 

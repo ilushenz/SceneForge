@@ -8,16 +8,19 @@ interface SingleRequest {
   spaceImageBase64: string
   objectImageBase64: string
   params: GenerationParams
-  angle: string
+  /** null / omitted = auto-detect angle from space photo */
+  angle: string | null
   /** Optional natural-language description derived from canvas annotations. */
   annotationDescription?: string
+  /** Clockwise rotation in degrees around the object's vertical axis. null = use reference orientation. */
+  objectRotationDegrees?: number
 }
 
-/** POST /api/generate/single — generates one composited image for one viewing angle. */
+/** POST /api/generate/single — generates one composited image. */
 generateRouter.post('/single', async (req: Request, res: Response) => {
-  const { spaceImageBase64, objectImageBase64, params, angle, annotationDescription } = req.body as SingleRequest
+  const { spaceImageBase64, objectImageBase64, params, angle, annotationDescription, objectRotationDegrees } = req.body as SingleRequest
 
-  if (!spaceImageBase64 || !objectImageBase64 || !params || !angle) {
+  if (!spaceImageBase64 || !objectImageBase64 || !params) {
     res.status(400).json({ error: 'INVALID_REQUEST', message: 'Missing required fields.' })
     return
   }
@@ -26,8 +29,11 @@ generateRouter.post('/single', async (req: Request, res: Response) => {
   req.socket.setTimeout(130_000)
 
   try {
-    const result = await generateSingleImage(spaceImageBase64, objectImageBase64, params, angle, annotationDescription)
-    res.json({ angle, base64: result.base64, mimeType: result.mimeType })
+    const result = await generateSingleImage(
+      spaceImageBase64, objectImageBase64, params,
+      angle ?? null, annotationDescription, objectRotationDegrees,
+    )
+    res.json({ angle: angle ?? 'auto', base64: result.base64, mimeType: result.mimeType })
   } catch (err) {
     const raw = err instanceof Error ? err.message : 'Unknown error'
 

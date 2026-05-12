@@ -1,14 +1,21 @@
 import type { AnnotationState, BrushStroke, PlacementLine } from '../types'
 
+/** Strips a data-URL prefix if present, returning raw base64. */
+function stripPrefix(input: string): string {
+  const idx = input.indexOf(',')
+  return idx !== -1 ? input.slice(idx + 1) : input
+}
+
 /**
- * Loads a base64 string into an HTMLImageElement, resolving when ready.
+ * Loads a base64 string (with or without data-URL prefix) into an HTMLImageElement.
  */
-function loadImage(base64: string, mimeType = 'image/jpeg'): Promise<HTMLImageElement> {
+function loadImage(base64: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve(img)
     img.onerror = reject
-    img.src = `data:${mimeType};base64,${base64}`
+    // Accept both raw base64 and full data-URLs
+    img.src = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`
   })
 }
 
@@ -81,15 +88,14 @@ function renderLine(ctx: CanvasRenderingContext2D, line: PlacementLine, w: numbe
 export async function compositeAnnotatedImage(
   spaceImageBase64: string,
   annotation: AnnotationState,
-  mimeType = 'image/jpeg',
 ): Promise<string> {
   const hasStrokes = annotation.strokes.length > 0
   const hasLine = annotation.line !== null
 
-  // Nothing to composite — return original
-  if (!hasStrokes && !hasLine) return spaceImageBase64
+  // Nothing to composite — return raw base64 (strip prefix so server receives consistent input)
+  if (!hasStrokes && !hasLine) return stripPrefix(spaceImageBase64)
 
-  const img = await loadImage(spaceImageBase64, mimeType)
+  const img = await loadImage(spaceImageBase64)
   const w = img.naturalWidth
   const h = img.naturalHeight
 

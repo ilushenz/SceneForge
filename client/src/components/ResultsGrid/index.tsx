@@ -42,6 +42,10 @@ async function downloadZip(results: ResultImage[]) {
 
 const RETRY_COOLDOWN_MS = 60_000 // 1 minute — respects the 2 RPM free-tier limit
 
+function angleLabel(angle: string) {
+  return angle === 'Auto' ? 'Auto angle' : angle
+}
+
 function ImageCard({
   result,
   onRetry,
@@ -74,7 +78,7 @@ function ImageCard({
       <div className="aspect-square rounded-xl bg-gray-800 border border-gray-700 flex flex-col items-center justify-center gap-3 p-4">
         <div className="w-8 h-8 border-4 border-blue-900 border-t-blue-500 rounded-full animate-spin" />
         <div className="text-center">
-          <p className="text-xs font-semibold text-gray-300">{result.angle}</p>
+          <p className="text-xs font-semibold text-gray-300">{angleLabel(result.angle)}</p>
           <p className="text-[10px] text-gray-500 mt-0.5">Generating… usually 30–90 s</p>
         </div>
       </div>
@@ -86,7 +90,7 @@ function ImageCard({
       <div className="aspect-square rounded-xl bg-amber-950/30 border border-amber-800/50 flex flex-col items-center justify-center gap-3 p-4">
         <div className="w-8 h-8 border-4 border-amber-900 border-t-amber-500 rounded-full animate-spin" />
         <div className="text-center">
-          <p className="text-xs font-semibold text-gray-300">{result.angle}</p>
+          <p className="text-xs font-semibold text-gray-300">{angleLabel(result.angle)}</p>
           <p className="text-[10px] text-amber-400 mt-0.5 leading-tight">{result.errorMessage}</p>
         </div>
       </div>
@@ -97,7 +101,7 @@ function ImageCard({
     return (
       <div className="aspect-square rounded-xl bg-red-950/30 border-2 border-red-900/50 flex flex-col items-center justify-center gap-2 p-4">
         <span className="text-2xl">⚠️</span>
-        <p className="text-[11px] font-semibold text-gray-300 text-center">{result.angle}</p>
+        <p className="text-[11px] font-semibold text-gray-300 text-center">{angleLabel(result.angle)}</p>
         <p className="text-[10px] text-red-400 text-center leading-tight line-clamp-3">{result.errorMessage}</p>
         <button
           onClick={handleRetry}
@@ -117,11 +121,11 @@ function ImageCard({
         <button
           className="relative aspect-square overflow-hidden cursor-zoom-in group"
           onClick={() => onOpen(result)}
-          aria-label={`View ${result.angle} full size`}
+          aria-label={`View ${angleLabel(result.angle)} full size`}
         >
           <img
             src={`data:${result.mimeType ?? 'image/jpeg'};base64,${result.base64}`}
-            alt={result.angle}
+            alt={angleLabel(result.angle)}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
@@ -131,10 +135,10 @@ function ImageCard({
 
         {/* Label + download */}
         <div className="px-3 py-2 border-t border-gray-700 flex items-center justify-between gap-2">
-          <p className="text-[11px] font-semibold text-gray-400 truncate">{result.angle}</p>
+          <p className="text-[11px] font-semibold text-gray-400 truncate">{angleLabel(result.angle)}</p>
           <button
             onClick={() => downloadImage(result.base64!, result.mimeType ?? 'image/jpeg', result.angle)}
-            aria-label={`Download ${result.angle}`}
+            aria-label={`Download ${angleLabel(result.angle)}`}
             className="shrink-0 text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition-colors"
           >
             ↓ Save
@@ -149,7 +153,7 @@ function ImageCard({
     <div className="aspect-square rounded-xl bg-gray-800 border border-gray-700 flex flex-col items-center justify-center gap-2 p-4">
       <span className="text-gray-600 text-2xl">⏳</span>
       <div className="text-center">
-        <p className="text-[11px] font-semibold text-gray-500">{result.angle}</p>
+        <p className="text-[11px] font-semibold text-gray-500">{angleLabel(result.angle)}</p>
         <p className="text-[10px] text-gray-600 mt-0.5">Queued — starts in ~35 s</p>
       </div>
     </div>
@@ -166,7 +170,7 @@ export function ResultsGrid({ results, onRetry }: ResultsGridProps) {
       <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8 min-h-[400px]">
         <div className="text-5xl opacity-20">🖼️</div>
         <p className="text-base font-medium text-gray-500">Your generated images will appear here</p>
-        <p className="text-sm text-gray-600">Upload photos, configure parameters, select 4 angles, then click Generate.</p>
+        <p className="text-sm text-gray-600">Upload photos, configure parameters, then click Generate.</p>
       </div>
     )
   }
@@ -174,7 +178,7 @@ export function ResultsGrid({ results, onRetry }: ResultsGridProps) {
   return (
     <>
       <div className="p-6 space-y-4 w-full">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 max-w-xl mx-auto w-full">
           {results.map((r) => (
             <ImageCard
               key={r.angle}
