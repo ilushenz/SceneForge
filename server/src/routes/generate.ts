@@ -25,8 +25,8 @@ generateRouter.post('/single', async (req: Request, res: Response) => {
     return
   }
 
-  // Allow up to 120 seconds for the Gemini call
-  req.socket.setTimeout(130_000)
+  // Allow up to 3 minutes for the Gemini call (model can be slow under load)
+  req.socket.setTimeout(200_000)
 
   try {
     const result = await generateSingleImage(

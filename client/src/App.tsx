@@ -22,7 +22,7 @@ async function generateWithRetry(
 ): Promise<{ base64: string; mimeType: string }> {
   for (let attempt = 0; attempt <= MAX_AUTO_RETRIES; attempt++) {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 130_000)
+    const timeout = setTimeout(() => controller.abort(), 210_000)  // 3.5 min
     try {
       const res = await fetch('/api/generate/single', {
         method: 'POST',
