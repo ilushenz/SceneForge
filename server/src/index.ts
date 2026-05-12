@@ -45,6 +45,12 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
-app.listen(PORT, () => {
-  console.log(`SceneForge server running on http://localhost:${PORT}`)
+console.log(`Starting SceneForge server on PORT=${PORT}, ALLOWED_ORIGINS=${process.env.ALLOWED_ORIGINS}`)
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`SceneForge server running on http://0.0.0.0:${PORT}`)
 })
+
+// Catch unhandled errors so Railway deploy logs show the real cause
+process.on('uncaughtException', (err) => { console.error('Uncaught exception:', err); process.exit(1) })
+process.on('unhandledRejection', (err) => { console.error('Unhandled rejection:', err); process.exit(1) })
