@@ -40,9 +40,12 @@ const WEATHER_OPTIONS = [
 ]
 
 export function ConfigForm() {
-  const { params, setParam } = useSessionStore()
+  const { params, setParam, annotation } = useSessionStore()
   const noteLen = params.freeNote.length
   const customSizeRef = useRef<HTMLInputElement>(null)
+
+  // Placement is overridden whenever the user has drawn annotations on the space photo
+  const placementOverridden = annotation.strokes.length > 0 || annotation.line !== null
 
   useEffect(() => {
     if (params.objectSize === 'custom') customSizeRef.current?.focus()
@@ -72,8 +75,15 @@ export function ConfigForm() {
         )}
       </div>
 
-      <RadioCardGroup label="Placement" options={PLACEMENT_OPTIONS} value={params.placement}
-        onChange={(v) => setParam('placement', v as Placement)} columns={3} />
+      <RadioCardGroup
+        label="Placement"
+        options={PLACEMENT_OPTIONS}
+        value={params.placement}
+        onChange={(v) => setParam('placement', v as Placement)}
+        columns={3}
+        disabled={placementOverridden}
+        disabledNote="set by annotation"
+      />
 
       <RadioCardGroup label="Time of day" options={TIME_OPTIONS} value={params.timeOfDay}
         onChange={(v) => setParam('timeOfDay', v as TimeOfDay)} columns={3} />

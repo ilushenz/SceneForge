@@ -11,9 +11,13 @@ interface RadioCardGroupProps {
   value: string
   onChange: (value: string) => void
   columns?: 2 | 3 | 4 | 6
+  /** When true the group is dimmed and clicks are ignored */
+  disabled?: boolean
+  /** Small badge shown next to the label when disabled */
+  disabledNote?: string
 }
 
-export function RadioCardGroup({ label, options, value, onChange, columns = 2 }: RadioCardGroupProps) {
+export function RadioCardGroup({ label, options, value, onChange, columns = 2, disabled, disabledNote }: RadioCardGroupProps) {
   const gridClass = {
     2: 'grid-cols-2',
     3: 'grid-cols-3',
@@ -22,8 +26,15 @@ export function RadioCardGroup({ label, options, value, onChange, columns = 2 }:
   }[columns]
 
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-500">{label}</p>
+    <div className={`space-y-2 transition-opacity ${disabled ? 'opacity-40 pointer-events-none select-none' : ''}`}>
+      <div className="flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+        {disabled && disabledNote && (
+          <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded-md leading-none">
+            {disabledNote}
+          </span>
+        )}
+      </div>
       <div className={`grid ${gridClass} gap-2`}>
         {options.map((opt) => {
           const selected = value === opt.value
@@ -33,6 +44,7 @@ export function RadioCardGroup({ label, options, value, onChange, columns = 2 }:
               type="button"
               role="radio"
               aria-checked={selected}
+              disabled={disabled}
               onClick={() => onChange(opt.value)}
               className={`text-left px-3 py-2.5 rounded-xl border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
                 ${selected
