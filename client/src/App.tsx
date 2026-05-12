@@ -4,6 +4,7 @@ import { UploadPanel } from './components/UploadPanel'
 import { ConfigForm } from './components/ConfigForm'
 import { AngleSelector } from './components/AngleSelector'
 import { ResultsGrid } from './components/ResultsGrid'
+import { compositeAnnotatedImage, getAnnotationDescription } from './utils/compositeImage'
 import type { ResultImage } from './types'
 
 const RATE_LIMIT_WAIT_MS = 62_000 // just over 1 minute — clears the RPM window
@@ -16,6 +17,7 @@ async function generateWithRetry(
   params: object,
   angle: string,
   onRateLimited: (retriesLeft: number, waitSecs: number) => void,
+  annotationDescription?: string,
 ): Promise<{ base64: string; mimeType: string }> {
   for (let attempt = 0; attempt <= MAX_AUTO_RETRIES; attempt++) {
     const controller = new AbortController()
@@ -24,7 +26,7 @@ async function generateWithRetry(
       const res = await fetch('/api/generate/single', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spaceImageBase64, objectImageBase64, params, angle }),
+        body: JSON.stringify({ spaceImageBase64, objectImageBase64, params, angle, annotationDescription }),
         signal: controller.signal,
       })
       const data = await res.json() as { base64?: string; mimeType?: string; message?: string; error?: string }
@@ -50,7 +52,7 @@ async function generateWithRetry(
 export default function App() {
   const {
     selectedAngles, spaceImageBase64, objectImageBase64,
-    params, results, setResults, updateResult,
+    params, results, setResults, updateResult, annotation,
   } = useSessionStore()
   const [generating, setGenerating] = useState(false)
 
@@ -59,6 +61,10 @@ export default function App() {
   const runGeneration = useCallback(async (angles: string[]) => {
     if (!spaceImageBase64 || !objectImageBase64) return
     setGenerating(true)
+
+    // Composite annotation onto space image once, reuse for all angles
+    const composedSpaceImage = await compositeAnnotatedImage(spaceImageBase64, annotation)
+    const annotationDescription = getAnnotationDescription(annotation) ?? undefined
 
     // Initialise all slots — first is 'generating', rest show as idle until their turn
     setResults(angles.map((angle, i): ResultImage => ({
@@ -77,11 +83,12 @@ export default function App() {
       const run = async () => {
         try {
           const { base64, mimeType } = await generateWithRetry(
-            spaceImageBase64, objectImageBase64, params, angle,
+            composedSpaceImage, objectImageBase64, params, angle,
             (retriesLeft, waitSecs) => updateResult(angle, {
               status: 'retrying',
               errorMessage: `Rate limited — auto-retrying in ${waitSecs}s (${retriesLeft} attempt${retriesLeft !== 1 ? 's' : ''} left)`,
             }),
+            annotationDescription,
           )
           updateResult(angle, { status: 'done', base64, mimeType })
         } catch (err) {
@@ -98,18 +105,23 @@ export default function App() {
     }
 
     setGenerating(false)
-  }, [spaceImageBase64, objectImageBase64, params, setResults, updateResult])
+  }, [spaceImageBase64, objectImageBase64, params, annotation, setResults, updateResult])
 
   const handleRetry = (angle: string) => {
     if (!spaceImageBase64 || !objectImageBase64) return
     updateResult(angle, { status: 'generating', base64: undefined, errorMessage: undefined })
-    generateWithRetry(
-      spaceImageBase64, objectImageBase64, params, angle,
-      (retriesLeft, waitSecs) => updateResult(angle, {
-        status: 'retrying',
-        errorMessage: `Rate limited — auto-retrying in ${waitSecs}s (${retriesLeft} attempt${retriesLeft !== 1 ? 's' : ''} left)`,
-      }),
-    )
+    const annotationDescription = getAnnotationDescription(annotation) ?? undefined
+    compositeAnnotatedImage(spaceImageBase64, annotation)
+      .then((composedSpaceImage) =>
+        generateWithRetry(
+          composedSpaceImage, objectImageBase64, params, angle,
+          (retriesLeft, waitSecs) => updateResult(angle, {
+            status: 'retrying',
+            errorMessage: `Rate limited — auto-retrying in ${waitSecs}s (${retriesLeft} attempt${retriesLeft !== 1 ? 's' : ''} left)`,
+          }),
+          annotationDescription,
+        )
+      )
       .then(({ base64, mimeType }) => updateResult(angle, { status: 'done', base64, mimeType }))
       .catch((err) => updateResult(angle, { status: 'error', errorMessage: err instanceof Error ? err.message : 'Generation failed.' }))
   }

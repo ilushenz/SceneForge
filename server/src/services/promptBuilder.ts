@@ -59,8 +59,12 @@ const WEATHER_DESCRIPTIONS: Record<string, string> = {
   'after rain': 'after recent rain — wet surfaces, slight reflections on the ground, moist vegetation',
 }
 
-/** Assembles a photorealistic compositing prompt from the user's parameter selections and one selected angle. */
-export function buildPrompt(params: GenerationParams, angleName: string): string {
+/**
+ * Assembles a photorealistic compositing prompt from the user's parameter selections
+ * and one selected angle. If `annotationDescription` is provided (non-empty), it is
+ * appended as a high-priority placement override.
+ */
+export function buildPrompt(params: GenerationParams, angleName: string, annotationDescription?: string): string {
   const angleDescription = ANGLE_PRESETS[angleName]
   const sizeDescription =
     params.objectSize === 'custom' && params.customSizeDescription.trim()
@@ -96,9 +100,15 @@ Output requirements:
 - No text overlays, captions, watermarks, or borders in the composition
 - Photographic quality with natural depth of field`
 
-  if (params.freeNote && params.freeNote.trim().length > 0) {
-    return basePrompt + `\n\nAdditional instruction from the user: ${params.freeNote.trim()}`
+  let prompt = basePrompt
+
+  if (annotationDescription && annotationDescription.trim().length > 0) {
+    prompt += `\n\nAnnotation-based placement override (highest priority — takes precedence over the placement parameter above):\n${annotationDescription.trim()}`
   }
 
-  return basePrompt
+  if (params.freeNote && params.freeNote.trim().length > 0) {
+    prompt += `\n\nAdditional instruction from the user: ${params.freeNote.trim()}`
+  }
+
+  return prompt
 }

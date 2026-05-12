@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GenerationParams, ResultImage, SessionState } from '../types'
+import type { AnnotationState, GenerationParams, ResultImage, SessionState } from '../types'
 
 const DEFAULT_PARAMS: GenerationParams = {
   objectType: 'freestanding',
@@ -11,7 +11,10 @@ const DEFAULT_PARAMS: GenerationParams = {
   freeNote: '',
 }
 
+const DEFAULT_ANNOTATION: AnnotationState = { strokes: [], line: null }
+
 interface SessionStore extends SessionState {
+  annotation: AnnotationState
   setSpaceImage: (base64: string | null, name: string | null) => void
   setObjectImage: (base64: string | null, name: string | null) => void
   setParam: <K extends keyof GenerationParams>(key: K, value: GenerationParams[K]) => void
@@ -19,6 +22,8 @@ interface SessionStore extends SessionState {
   setResults: (results: ResultImage[]) => void
   updateResult: (angle: string, update: Partial<ResultImage>) => void
   clearResults: () => void
+  setAnnotation: (annotation: AnnotationState) => void
+  clearAnnotation: () => void
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -29,6 +34,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   params: DEFAULT_PARAMS,
   selectedAngles: [],
   results: [],
+  annotation: DEFAULT_ANNOTATION,
 
   setSpaceImage: (base64, name) => set({ spaceImageBase64: base64, spaceImageName: name }),
   setObjectImage: (base64, name) => set({ objectImageBase64: base64, objectImageName: name }),
@@ -48,4 +54,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
     })),
 
   clearResults: () => set({ results: [] }),
+
+  setAnnotation: (annotation) => set({ annotation }),
+
+  clearAnnotation: () => set({ annotation: DEFAULT_ANNOTATION }),
 }))

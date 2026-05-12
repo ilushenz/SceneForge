@@ -9,11 +9,13 @@ interface SingleRequest {
   objectImageBase64: string
   params: GenerationParams
   angle: string
+  /** Optional natural-language description derived from canvas annotations. */
+  annotationDescription?: string
 }
 
 /** POST /api/generate/single — generates one composited image for one viewing angle. */
 generateRouter.post('/single', async (req: Request, res: Response) => {
-  const { spaceImageBase64, objectImageBase64, params, angle } = req.body as SingleRequest
+  const { spaceImageBase64, objectImageBase64, params, angle, annotationDescription } = req.body as SingleRequest
 
   if (!spaceImageBase64 || !objectImageBase64 || !params || !angle) {
     res.status(400).json({ error: 'INVALID_REQUEST', message: 'Missing required fields.' })
@@ -24,7 +26,7 @@ generateRouter.post('/single', async (req: Request, res: Response) => {
   req.socket.setTimeout(130_000)
 
   try {
-    const result = await generateSingleImage(spaceImageBase64, objectImageBase64, params, angle)
+    const result = await generateSingleImage(spaceImageBase64, objectImageBase64, params, angle, annotationDescription)
     res.json({ angle, base64: result.base64, mimeType: result.mimeType })
   } catch (err) {
     const raw = err instanceof Error ? err.message : 'Unknown error'

@@ -43,6 +43,7 @@ export async function generateSingleImage(
   objectImageBase64: string,
   params: GenerationParams,
   angleName: string,
+  annotationDescription?: string,
 ): Promise<GenerateResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim()
   if (!apiKey) {
@@ -56,7 +57,7 @@ export async function generateSingleImage(
     prepareImage(objectImageBase64),
   ])
 
-  const prompt = buildPrompt(params, angleName)
+  const prompt = buildPrompt(params, angleName, annotationDescription)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const response = await (ai.models as any).generateContent({
