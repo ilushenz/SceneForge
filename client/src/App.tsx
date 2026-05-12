@@ -126,9 +126,9 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="flex flex-col md:h-screen bg-gray-50 dark:bg-gray-950">
       {/* Top bar */}
-      <header className="flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm shrink-0">
+      <header className="flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm md:shrink-0 sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">SceneForge</span>
           <span className="hidden sm:inline text-xs text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wider ml-2">
@@ -144,9 +144,9 @@ export default function App() {
       </header>
 
       {/* Two-panel body */}
-      <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
+      <div className="flex md:flex-1 md:overflow-hidden flex-col md:flex-row">
         {/* Left panel */}
-        <aside className="w-full md:w-96 lg:w-[420px] shrink-0 bg-white dark:bg-gray-900 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-y-auto">
+        <aside className="w-full md:w-96 lg:w-[420px] md:shrink-0 bg-white dark:bg-gray-900 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex flex-col md:overflow-y-auto">
           <div className="p-5 space-y-6">
             <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
               Upload &amp; Configure
@@ -178,7 +178,7 @@ export default function App() {
         </aside>
 
         {/* Right panel */}
-        <main className="flex-1 overflow-y-auto flex items-start justify-center bg-gray-50 dark:bg-gray-950">
+        <main className="flex-1 md:overflow-y-auto flex items-start justify-center bg-gray-50 dark:bg-gray-950">
           <ResultsGrid results={results} onRetry={handleRetry} />
         </main>
       </div>
