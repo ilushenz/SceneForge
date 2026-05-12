@@ -1,6 +1,16 @@
 import { GoogleGenAI } from '@google/genai'
-import sharp from 'sharp'
 import type { GenerationParams } from '../types/index.js'
+
+// Lazy-load sharp so a missing native binary doesn't crash the whole server at startup
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let sharp: any = null
+try {
+  const mod = await import('sharp')
+  sharp = mod.default
+  console.log('sharp loaded successfully')
+} catch (e) {
+  console.warn('sharp failed to load — images will be sent without server-side resizing:', e)
+}
 import { buildPrompt } from './promptBuilder.js'
 
 const SYSTEM_INSTRUCTION =
@@ -14,12 +24,14 @@ const MAX_DIMENSION = 2048
 /** Strips the data-URL prefix and resizes (if needed) so the longest side ≤ 2048px. Returns raw base64 JPEG. */
 async function prepareImage(base64Input: string): Promise<string> {
   const raw = base64Input.replace(/^data:image\/\w+;base64,/, '')
-  const buffer = Buffer.from(raw, 'base64')
 
+  // If sharp didn't load, pass the image through as-is
+  if (!sharp) return raw
+
+  const buffer = Buffer.from(raw, 'base64')
   const { width = 0, height = 0 } = await sharp(buffer).metadata()
 
   if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
-    // Already within limits — re-encode as JPEG at 85% for consistency
     const jpeg = await sharp(buffer).jpeg({ quality: 85 }).toBuffer()
     return jpeg.toString('base64')
   }
