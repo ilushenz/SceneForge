@@ -1,4 +1,4 @@
-import type { AnnotationState, BrushStroke, PlacementLine } from '../types'
+import type { AnnotationState } from '../types'
 
 /** Strips a data-URL prefix if present, returning raw base64. */
 function stripPrefix(input: string): string {
@@ -6,125 +6,17 @@ function stripPrefix(input: string): string {
   return idx !== -1 ? input.slice(idx + 1) : input
 }
 
-/**
- * Loads a base64 string (with or without data-URL prefix) into an HTMLImageElement.
- */
-function loadImage(base64: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    // Accept both raw base64 and full data-URLs
-    img.src = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`
-  })
-}
 
 /**
- * Renders all brush strokes onto an off-screen canvas at native image resolution.
- * Coordinates are stored as fractions (0–1) and scaled to the canvas dimensions.
- */
-function renderStrokes(ctx: CanvasRenderingContext2D, strokes: BrushStroke[], w: number, h: number) {
-  for (const stroke of strokes) {
-    if (stroke.points.length === 0) continue
-
-    ctx.save()
-    if (stroke.erase) {
-      ctx.globalCompositeOperation = 'destination-out'
-      ctx.globalAlpha = 1
-    } else {
-      ctx.globalCompositeOperation = 'source-over'
-      ctx.globalAlpha = 0.5
-      ctx.strokeStyle = 'rgba(220,38,38,1)' // red; alpha handled by globalAlpha
-    }
-
-    const radius = stroke.radiusFraction * w
-    ctx.lineWidth = radius * 2
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-
-    ctx.beginPath()
-    const first = stroke.points[0]
-    ctx.moveTo(first.x * w, first.y * h)
-    for (let i = 1; i < stroke.points.length; i++) {
-      const pt = stroke.points[i]
-      ctx.lineTo(pt.x * w, pt.y * h)
-    }
-    // Single-point tap — draw a dot
-    if (stroke.points.length === 1) {
-      ctx.arc(first.x * w, first.y * h, radius, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(220,38,38,1)'
-      ctx.fill()
-    } else {
-      ctx.stroke()
-    }
-
-    ctx.restore()
-  }
-}
-
-/**
- * Renders the placement line (without handles) onto the off-screen canvas.
- */
-function renderLine(ctx: CanvasRenderingContext2D, line: PlacementLine, w: number, h: number) {
-  ctx.save()
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.strokeStyle = 'rgba(220,38,38,0.9)'
-  ctx.lineWidth = Math.max(2, w * 0.003) // ~0.3% of image width, minimum 2px
-  ctx.lineCap = 'round'
-  ctx.setLineDash([Math.max(8, w * 0.008), Math.max(6, w * 0.005)])
-  ctx.beginPath()
-  ctx.moveTo(line.x1 * w, line.y1 * h)
-  ctx.lineTo(line.x2 * w, line.y2 * h)
-  ctx.stroke()
-  ctx.restore()
-}
-
-/**
- * Composites the space image with any annotation strokes/line at its native resolution.
- * Returns a base64 JPEG string (no data: prefix).
- *
- * If there are no annotations, returns the original base64 unchanged.
+ * Returns the space image as raw base64 (no data: prefix), ready to send to the server.
+ * Annotations are never drawn onto the image — they are described in the prompt as text only.
  */
 export async function compositeAnnotatedImage(
   spaceImageBase64: string,
-  annotation: AnnotationState,
+  _annotation: AnnotationState,
 ): Promise<string> {
-  const hasStrokes = annotation.strokes.length > 0
-  const hasLine = annotation.line !== null
-
-  // Nothing to composite — return raw base64 (strip prefix so server receives consistent input)
-  if (!hasStrokes && !hasLine) return stripPrefix(spaceImageBase64)
-
-  const img = await loadImage(spaceImageBase64)
-  const w = img.naturalWidth
-  const h = img.naturalHeight
-
-  // Main canvas — draw the space photo
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(img, 0, 0, w, h)
-
-  // Brush overlay — separate canvas so we can flatten at 50% opacity
-  if (hasStrokes) {
-    const brushCanvas = document.createElement('canvas')
-    brushCanvas.width = w
-    brushCanvas.height = h
-    const bCtx = brushCanvas.getContext('2d')!
-    renderStrokes(bCtx, annotation.strokes, w, h)
-    ctx.drawImage(brushCanvas, 0, 0)
-  }
-
-  // Line — drawn directly (no handles)
-  if (hasLine) {
-    renderLine(ctx, annotation.line!, w, h)
-  }
-
-  // Export as JPEG
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
-  // Strip the "data:image/jpeg;base64," prefix
-  return dataUrl.split(',')[1]
+  // Always send the clean space photo — annotations go to the prompt as text, not pixels.
+  return stripPrefix(spaceImageBase64)
 }
 
 /**
@@ -142,27 +34,40 @@ export function getAnnotationDescription(annotation: AnnotationState): string | 
 
   if (hasLine && annotation.line) {
     const l = annotation.line
-    // Convert fractions to rough English positions for richer context
-    const describeX = (x: number) => x < 0.33 ? 'left' : x > 0.67 ? 'right' : 'centre'
-    const describeY = (y: number) => y < 0.33 ? 'top' : y > 0.67 ? 'bottom' : 'middle'
-    const p1 = `${describeX(l.x1)}-${describeY(l.y1)}`
-    const p2 = `${describeX(l.x2)}-${describeY(l.y2)}`
+    const pct = (v: number) => Math.round(v * 100)
+    // Express endpoints as percentages from top-left for precision
+    const p1 = `(${pct(l.x1)}% from left, ${pct(l.y1)}% from top)`
+    const p2 = `(${pct(l.x2)}% from left, ${pct(l.y2)}% from top)`
     parts.push(
-      `A bright red dashed straight line is drawn on the first (space) image. ` +
-      `This line runs from the ${p1} area to the ${p2} area of the image and marks the exact ` +
-      `rear bottom edge — the precise ground contact line — where the object must be placed. ` +
-      `The base of the object must rest exactly along this line. ` +
-      `Use this line as the definitive placement guide and ignore the "Placement within the space" parameter above.`
+      `The user has drawn a placement reference line on the space image. ` +
+      `This line runs from ${p1} to ${p2} — these are pixel-percentage coordinates measured from the top-left corner of the image. ` +
+      `This line marks the exact depth in the scene where the object should stand. ` +
+      `The base of the object must sit on this line in the image. ` +
+      `If there are background elements (hedges, walls, bushes, trees) immediately behind this line in the scene, the object must appear touching them — no gap of empty ground between the object and those elements. ` +
+      `Do not place the object forward of (closer to the camera than) this line. ` +
+      `Use this as the definitive placement guide; ignore the "Placement within the space" parameter above.`
     )
   }
 
   if (hasStrokes) {
-    parts.push(
-      `A red semi-transparent painted region is highlighted on the first (space) image. ` +
-      `This painted area indicates exactly where the object should be positioned within the space. ` +
-      `The centre of the object's base must be placed within or at the centroid of this highlighted region. ` +
-      `Use this highlighted region as the definitive placement guide and ignore the "Placement within the space" parameter above.`
-    )
+    // Compute bounding box of all non-erase stroke points for a tighter description
+    const paintPoints = annotation.strokes
+      .filter(s => !s.erase)
+      .flatMap(s => s.points)
+    if (paintPoints.length > 0) {
+      const xs = paintPoints.map(p => p.x)
+      const ys = paintPoints.map(p => p.y)
+      const minX = Math.min(...xs), maxX = Math.max(...xs)
+      const minY = Math.min(...ys), maxY = Math.max(...ys)
+      const cx = Math.round((minX + maxX) / 2 * 100)
+      const cy = Math.round((minY + maxY) / 2 * 100)
+      parts.push(
+        `The user has painted a marked region on the space image to indicate the desired placement spot. ` +
+        `The centroid of this marked region is at approximately (${cx}% from left, ${cy}% from top) of the image frame. ` +
+        `Place the base of the object centred on this location in the scene. ` +
+        `Use this as the definitive placement guide; ignore the "Placement within the space" parameter above.`
+      )
+    }
   }
 
   return parts.join('\n\n')

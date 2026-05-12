@@ -35,6 +35,7 @@ generateRouter.post('/single', async (req: Request, res: Response) => {
     )
     res.json({ angle: angle ?? 'auto', base64: result.base64, mimeType: result.mimeType })
   } catch (err) {
+    console.error('[generate/single] error:', err)
     const raw = err instanceof Error ? err.message : 'Unknown error'
 
     // Extract a clean human-readable message from API error JSON if present

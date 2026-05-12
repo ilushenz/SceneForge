@@ -24,7 +24,17 @@ import { generateRouter } from './routes/generate.js'
 const app = express()
 const PORT = process.env.PORT ?? 3001
 
-app.use(cors({ origin: 'http://localhost:5173' }))
+// ALLOWED_ORIGINS — comma-separated list, e.g. "https://ilushenz.github.io,http://localhost:5173"
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
+  .split(',').map(o => o.trim()).filter(Boolean)
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, same-origin)
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    callback(new Error(`CORS: origin ${origin} not allowed`))
+  },
+}))
 app.use(express.json({ limit: '50mb' }))
 
 app.use('/api/generate', generateRouter)

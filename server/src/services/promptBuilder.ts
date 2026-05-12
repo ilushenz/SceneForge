@@ -103,6 +103,11 @@ Lighting and atmosphere:
 
 ${viewingAngleSection}
 
+Placement discipline (critical — follow exactly):
+- Place the object at the precise depth and position specified. Do not second-guess or adjust the depth for aesthetic reasons.
+- If the specified location is adjacent to background elements (hedges, walls, trees, bushes, etc.), the object must appear physically touching or immediately in front of those elements — there must be no visible empty gap of ground between the object's base and the background feature.
+- Do not move the object forward (closer to the camera) relative to the specified position.
+
 Output requirements:
 - Produce a single photorealistic composite photograph
 - The result must look like a real photograph taken on location, not a digital render, illustration, or collage

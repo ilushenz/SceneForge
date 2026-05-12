@@ -24,7 +24,7 @@ async function generateWithRetry(
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 210_000)  // 3.5 min
     try {
-      const res = await fetch('/api/generate/single', {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}/api/generate/single`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -136,7 +136,7 @@ export function AnnotationCanvas({ imageBase64, imageName, annotation, onChange 
         ctx.strokeStyle = 'rgba(0,0,0,1)'
       } else {
         ctx.globalCompositeOperation = 'source-over'
-        ctx.globalAlpha = 0.5
+        ctx.globalAlpha = 1
         ctx.strokeStyle = 'rgba(220,38,38,1)'
       }
       const r = stroke.radiusFraction * w
@@ -293,7 +293,7 @@ export function AnnotationCanvas({ imageBase64, imageName, annotation, onChange 
       ctx.fillStyle = 'rgba(0,0,0,1)'
     } else {
       ctx.globalCompositeOperation = 'source-over'
-      ctx.globalAlpha = 0.5
+      ctx.globalAlpha = 1
       ctx.strokeStyle = 'rgba(220,38,38,1)'
     }
   }
@@ -569,7 +569,7 @@ export function AnnotationCanvas({ imageBase64, imageName, annotation, onChange 
         {/* Annotation active hint */}
         {hasAnnotations && (
           <p className="text-[10px] text-gray-600 leading-tight">
-            ✓ Annotations are baked into the generated images
+            ✓ Annotations guide placement via the prompt — not drawn on the generated image
           </p>
         )}
       </div>

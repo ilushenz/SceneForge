@@ -51,7 +51,7 @@ export async function generateSingleImage(
     throw new Error('API_KEY_MISSING')
   }
 
-  const ai = new GoogleGenAI({ apiKey })
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: 'v1alpha' } })
 
   const [spaceData, objectData] = await Promise.all([
     prepareImage(spaceImageBase64),
@@ -62,7 +62,7 @@ export async function generateSingleImage(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const response = await (ai.models as any).generateContent({
-    model: 'gemini-3-pro-image-preview',
+    model: 'gemini-2.5-flash-image',
     contents: [
       {
         role: 'user',
@@ -74,8 +74,8 @@ export async function generateSingleImage(
       },
     ],
     config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      responseModalities: ['TEXT', 'IMAGE'],
+      systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+      responseModalities: ['IMAGE', 'TEXT'],
     },
   })
 
