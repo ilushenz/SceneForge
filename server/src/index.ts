@@ -47,7 +47,7 @@ app.get('/health', (_req, res) => {
 
 console.log(`Starting SceneForge server on PORT=${PORT}, ALLOWED_ORIGINS=${process.env.ALLOWED_ORIGINS}`)
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`SceneForge server running on http://0.0.0.0:${PORT}`)
 })
 
